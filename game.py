@@ -36,6 +36,9 @@ block_size = screen_width / 20
 # set up the player's tail movement
 tail_dx, tail_dy = player_dx, player_dy
 
+# set up the player's score
+score = 0
+
 # Set up the end game
 def end_game():
     pygame.font.init()
@@ -69,15 +72,15 @@ def move_player():
         if player_dx <= 0:
             player_dx = -block_size
             player_dy = 0
-    if keys[pygame.K_RIGHT]:
+    elif keys[pygame.K_RIGHT]:
         if player_dx >= 0:
             player_dx = block_size
             player_dy = 0
-    if keys[pygame.K_UP]:
+    elif keys[pygame.K_UP]:
         if player_dy >= 0:
             player_dy = -block_size
             player_dx = 0
-    if keys[pygame.K_DOWN]:
+    elif keys[pygame.K_DOWN]:
         if player_dy <= 0:
             player_dy = block_size
             player_dx = 0
@@ -90,7 +93,9 @@ def position_fruit():
     fruit_row = screen_height // block_size
     fruit.x = random.randint(1, fruit_col - 1) * block_size
     fruit.y = random.randint(1, fruit_row - 1) * block_size
-    print(fruit_col, fruit_row)
+    for t in tail:
+        if fruit.x == t.x and fruit.y == t.y:
+            position_fruit()
 
 # set up the colisions with the tail
 def colisions_tail():
@@ -100,9 +105,11 @@ def colisions_tail():
 
 # set up the colisions with the fruit
 def colisions_fruit():
+    global score
     if player.colliderect(fruit):
         position_fruit()
         add_tail()
+        score += 1
 
 # Set up the colisions with the walls
 def colisions_wall():
@@ -124,12 +131,23 @@ def colisions_player():
     colisions_fruit()
     colisions_tail()
 
+# Draw the player's score
+def draw_score():
+    global score
+    pygame.font.init()
+    font = pygame.font.Font(None, int(block_size))
+    text = font.render(f"Score : {score}", True, WHITE)
+    text_rect = text.get_rect()
+    text_rect.center = (screen_width // 2, screen_height // int(block_size))
+    screen.blit(text, text_rect)
+
 # Draw all the objects
 def draw_object():
     pygame.draw.rect(screen, RED, fruit)
     pygame.draw.rect(screen, WHITE, player)
     for i in tail:
         pygame.draw.rect(screen, GREEN, i)
+    draw_score()
     pygame.display.flip()
 
 # Run the game

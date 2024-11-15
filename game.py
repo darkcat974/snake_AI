@@ -1,169 +1,171 @@
 import pygame
 import random
+from enum import Enum
 
 # Initialize the game
 pygame.init()
 
-# set screen's size
-screen_width = 800
-screen_height = 800
+class Game:
+    def __init__(self, w=800, h=800):
+        # set screen's size
+        self.screen_width = w
+        self.screen_height = h
+        # Set up the screen
+        self.screen = pygame.display.set_mode((self.screen_width, self.screen_height))
+        # Set up the colors
+        self.BLACK = (0, 0, 0)
+        self.WHITE = (255, 255, 255)
+        self.RED = (255, 0, 0)
+        self.GREEN = (0, 255, 0)
+        self.reset()
 
-# Set up the screen
-screen = pygame.display.set_mode((screen_width, screen_height))
+    def reset(self):
+        # Set up the player
+        self.player = pygame.Rect(self.screen_width / 20, self.screen_height / 20, self.screen_width / 20, self.screen_height / 20)
+        # set up the fruit
+        self.fruit = pygame.Rect(200, 200, self.screen_width / 20, self.screen_height / 20)
+        # Set up the player's tail
+        self.tail = [pygame.Rect(self.screen_width / 20, self.player.y, self.screen_width / 20, self.screen_height / 20)]
+        # Set up the clock
+        self.clock = pygame.time.Clock()
+        # set up the player's movement
+        self.player_dx, self.player_dy = 0, 0
+        self.block_size = self.screen_width / 20
+        # set up the player's tail movement
+        self.tail_dx, self.tail_dy = self.player_dx, self.player_dy
+        # set up the player's score
+        self.score = 0
 
-# Set up the colors
-BLACK = (0, 0, 0)
-WHITE = (255, 255, 255)
-RED = (255, 0, 0)
-GREEN = (0, 255, 0)
+    # Set up the end game
+    def end_game(self):
+        pygame.font.init()
+        font = pygame.font.Font(None, 36)
+        text = font.render("Game Over", True, self.WHITE)
+        text_rect = text.get_rect()
+        text_rect.center = (self.screen_width // 2, self.screen_height // 2)
+        self.screen.blit(text, text_rect)
+        pygame.display.flip()
+        pygame.time.wait(1500)
+        self.reset()
+        self.loop
 
-# Set up the player
-player = pygame.Rect(screen_width / 20, screen_height / 20, screen_width / 20, screen_height / 20)
+    # add a new block to the player's tail
+    def add_tail(self):
+        self.tail.append(pygame.Rect(self.tail[-1].x, self.tail[-1].y, 50, 50))
 
-# set up the fruit
-fruit = pygame.Rect(200, 200, screen_width / 20, screen_height / 20)
+    # Set up the player's tail movement
+    def move_tail(self):
+        if len(self.tail) > 0:
+            for i in range(len(self.tail) - 1, 0, -1):
+                self.tail[i] = self.tail[i - 1].copy()
+            self.tail[0].x = self.player.x - self.player_dx
+            self.tail[0].y = self.player.y - self.player_dy
 
-# Set up the player's tail
-tail = [pygame.Rect(player.x - screen_width / 20, player.y, screen_width / 20, screen_height / 20)]
+    # Set up the player's movement
+    def move_player(self, event=None):
+        self.tail_dx, self.tail_dy = self.player_dx, self.player_dy
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_LEFT:
+                if self.player_dx <= 0:
+                    self.player_dx = -self.block_size
+                    self.player_dy = 0
+            elif event.key == pygame.K_RIGHT:
+                if self.player_dx >= 0:
+                    self.player_dx = self.block_size
+                    self.player_dy = 0
+            elif event.key == pygame.K_UP:
+                if self.player_dy >= 0:
+                    self.player_dy = -self.block_size
+                    self.player_dx = 0
+            elif event.key == pygame.K_DOWN:
+                if self.player_dy <= 0:
+                    self.player_dy = self.block_size
+                    self.player_dx = 0
+        self.player.x += self.player_dx
+        self.player.y += self.player_dy
 
-# Set up the clock
-clock = pygame.time.Clock()
+    # set up the fruit's position
+    def position_fruit(self):
+        fruit_col = self.screen_width // self.block_size
+        fruit_row = self.screen_height // self.block_size
+        self.fruit.x = random.randint(1, fruit_col - 1) * self.block_size
+        self.fruit.y = random.randint(1, fruit_row - 1) * self.block_size
+        for t in self.tail:
+            if self.fruit.x == t.x and self.fruit.y == t.y:
+                self.position_fruit()
 
-# set up the player's movement
-player_dx, player_dy = 0, 0
-block_size = screen_width / 20
+    # set up the colisions with the tail
+    def colisions_tail(self):
+        for i in self.tail[1:]:
+            if self.player.x == i.x and self.player.y == i.y:
+                self.end_game()
 
-# set up the player's tail movement
-tail_dx, tail_dy = player_dx, player_dy
+    # set up the colisions with the fruit
+    def colisions_fruit(self):
+        if self.player.colliderect(self.fruit):
+            self.position_fruit()
+            self.add_tail()
+            self.score += 1
 
-# set up the player's score
-score = 0
+    # Set up the colisions with the walls
+    def colisions_wall(self):
+        if self.player.x < 0:
+            self.player.x = 0
+            self.end_game()
+        if self.player.x > self.screen_width - self.player.width:
+            self.player.x = self.screen_width - self.player.width
+            self.end_game()
+        if self.player.y < 0:
+            self.player.y = 0
+            self.end_game()
+        if self.player.y > self.screen_height - self.player.height:
+            self.player.y = self.screen_height - self.player.height
+            self.end_game()
 
-# Set up the end game
-def end_game():
-    pygame.font.init()
-    font = pygame.font.Font(None, 36)
-    text = font.render("Game Over", True, WHITE)
-    text_rect = text.get_rect()
-    text_rect.center = (screen_width // 2, screen_height // 2)
-    screen.blit(text, text_rect)
-    pygame.display.flip()
-    pygame.time.wait(1500)
-    pygame.quit()
+    # call all the colision's functions related to the player
+    def colisions_player(self):
+        self.colisions_wall()
+        self.colisions_fruit()
+        self.colisions_tail()
 
-# add a new block to the player's tail
-def add_tail():
-    tail.append(pygame.Rect(tail[-1].x, tail[-1].y, 50, 50))
+    # Draw the player's score
+    def draw_score(self):
+        pygame.font.init()
+        font = pygame.font.Font(None, int(self.block_size))
+        text = font.render(f"Score : {self.score}", True, self.WHITE)
+        text_rect = text.get_rect()
+        text_rect.center = (self.screen_width // 2, self.screen_height // int(self.block_size))
+        self.screen.blit(text, text_rect)
 
-# Set up the player's tail movement
-def move_tail():
-    if len(tail) > 0:
-        for i in range(len(tail) - 1, 0, -1):
-            tail[i] = tail[i - 1].copy()
-        tail[0].x = player.x - player_dx
-        tail[0].y = player.y - player_dy
+    # Draw all the objects
+    def draw_object(self):
+        pygame.draw.rect(self.screen, self.RED, self.fruit)
+        pygame.draw.rect(self.screen, self.WHITE, self.player)
+        for i in self.tail:
+            pygame.draw.rect(self.screen, self.GREEN, i)
+        self.draw_score()
+        pygame.display.flip()
 
-# Set up the player's movement
-def move_player():
-    global player_dx, player_dy, tail_dx, tail_dy
-    tail_dx, tail_dy = player_dx, player_dy
-    keys = pygame.key.get_pressed()
-    if keys[pygame.K_LEFT]:
-        if player_dx <= 0:
-            player_dx = -block_size
-            player_dy = 0
-    elif keys[pygame.K_RIGHT]:
-        if player_dx >= 0:
-            player_dx = block_size
-            player_dy = 0
-    elif keys[pygame.K_UP]:
-        if player_dy >= 0:
-            player_dy = -block_size
-            player_dx = 0
-    elif keys[pygame.K_DOWN]:
-        if player_dy <= 0:
-            player_dy = block_size
-            player_dx = 0
-    player.x += player_dx
-    player.y += player_dy
+    def player_interactions(self, event):
+        self.move_player(event)
+        self.move_tail()
+        self.colisions_player()
 
-# set up the fruit's position
-def position_fruit():
-    fruit_col = screen_width // block_size
-    fruit_row = screen_height // block_size
-    fruit.x = random.randint(1, fruit_col - 1) * block_size
-    fruit.y = random.randint(1, fruit_row - 1) * block_size
-    for t in tail:
-        if fruit.x == t.x and fruit.y == t.y:
-            position_fruit()
-
-# set up the colisions with the tail
-def colisions_tail():
-    for i in tail[1:]:
-        if player.x == i.x and player.y == i.y:
-            end_game()
-
-# set up the colisions with the fruit
-def colisions_fruit():
-    global score
-    if player.colliderect(fruit):
-        position_fruit()
-        add_tail()
-        score += 1
-
-# Set up the colisions with the walls
-def colisions_wall():
-    if player.x < 0:
-        player.x = 0
-        end_game()
-    if player.x > screen_width - player.width:
-        player.x = screen_width - player.width
-        end_game()
-    if player.y < 0:
-        player.y = 0
-        end_game()
-    if player.y > screen_height - player.height:
-        player.y = screen_height - player.height
-        end_game()
-
-def colisions_player():
-    colisions_wall()
-    colisions_fruit()
-    colisions_tail()
-
-# Draw the player's score
-def draw_score():
-    global score
-    pygame.font.init()
-    font = pygame.font.Font(None, int(block_size))
-    text = font.render(f"Score : {score}", True, WHITE)
-    text_rect = text.get_rect()
-    text_rect.center = (screen_width // 2, screen_height // int(block_size))
-    screen.blit(text, text_rect)
-
-# Draw all the objects
-def draw_object():
-    pygame.draw.rect(screen, RED, fruit)
-    pygame.draw.rect(screen, WHITE, player)
-    for i in tail:
-        pygame.draw.rect(screen, GREEN, i)
-    draw_score()
-    pygame.display.flip()
-
-# Run the game
-def main():
-    running = True
-    while running:
-        screen.fill(BLACK)
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-        move_player()
-        move_tail()
-        colisions_player()
-        draw_object()
-        clock.tick(6)
-    pygame.quit()
+    # Run the game
+    def loop(self):
+        running = True
+        while running:
+            self.screen.fill(self.BLACK)
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    return
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_q:
+                        return
+            self.player_interactions(event)
+            self.draw_object()
+            self.clock.tick(10)
 
 if __name__ == "__main__":
-    main()
+    game = Game()
+    game.loop()

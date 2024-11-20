@@ -146,10 +146,26 @@ class Game:
         self.draw_score()
         pygame.display.flip()
 
+    # Set up the player's interactions
     def player_interactions(self, event):
         self.move_player(event)
         self.move_tail()
         self.colisions_player()
+
+    # Get the game's state
+    def game_state(self):
+        table = []
+        for i in range(self.screen_width // self.block_size):
+            for j in range(self.screen_height // self.block_size):
+                if self.player.x == i and self.player.y == j:
+                    table.append(1)
+                elif self.fruit.x == i and self.fruit.y == j:
+                    table.append(2)
+                elif any([t.x == i and t.y == j for t in self.tail]):
+                    table.append(3)
+                else:
+                    table.append(0)
+        return table
 
     # Run the game
     def loop(self):
@@ -165,7 +181,3 @@ class Game:
             self.player_interactions(event)
             self.draw_object()
             self.clock.tick(10)
-
-if __name__ == "__main__":
-    game = Game()
-    game.loop()
